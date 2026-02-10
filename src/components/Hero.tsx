@@ -110,7 +110,7 @@ export default function Hero() {
               className="flex gap-8 mt-12 pt-8 border-t border-gray-100"
             >
               {[
-                { value: "50+", label: "Projects Delivered" },
+                { value: "30+", label: "Projects Delivered" },
                 { value: "100%", label: "Client Satisfaction" },
               ].map((stat) => (
                 <div key={stat.label}>

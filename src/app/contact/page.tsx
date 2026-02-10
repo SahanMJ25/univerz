@@ -42,13 +42,44 @@ export default function ContactPage() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  /* ─────────────────────────────────────────────────────────
+     ✏️  PASTE YOUR WEB3FORMS ACCESS KEY BELOW
+     Get it free at: https://web3forms.com
+     Enter your email (teamuniverzlk@gmail.com) and they'll
+     send you the key. Replace YOUR_ACCESS_KEY_HERE with it.
+     ───────────────────────────────────────────────────────── */
+  const WEB3FORMS_KEY = "fbe20efc-6f4f-4261-b930-b0727949ab4c";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate submission — replace with actual API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_key: WEB3FORMS_KEY,
+          subject: `New Inquiry from ${formData.name} — ${formData.service}`,
+          from_name: formData.name,
+          name: formData.name,
+          email: formData.email,
+          service: formData.service,
+          message: formData.message,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setIsSubmitted(true);
+      } else {
+        alert("Something went wrong. Please try again or contact us via WhatsApp.");
+      }
+    } catch {
+      alert("Network error. Please try again or contact us via WhatsApp.");
+    }
+
     setIsSubmitting(false);
-    setIsSubmitted(true);
   };
 
   return (

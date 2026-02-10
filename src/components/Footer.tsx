@@ -121,10 +121,10 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <Mail size={16} className="text-brand mt-0.5 shrink-0" />
                 <a
-                  href="mailto:hello@univerz.lk"
+                  href="mailto:teamuniverzlk@gmail.com"
                   className="text-slate-400 hover:text-brand text-sm transition-colors"
                 >
-                  hello@univerz.lk
+                  teamuniverzlk@gmail.com
                 </a>
               </li>
               <li className="flex items-start gap-3">
@@ -133,10 +133,10 @@ export default function Footer() {
                   className="text-brand mt-0.5 shrink-0"
                 />
                 <a
-                  href="tel:+94771234567"
+                  href="tel:+94778983858"
                   className="text-slate-400 hover:text-brand text-sm transition-colors"
                 >
-                  +94 77 123 4567
+                  +94 77 898 3858
                 </a>
               </li>
             </ul>

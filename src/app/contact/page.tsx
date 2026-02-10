@@ -79,8 +79,8 @@ export default function ContactPage() {
                 {
                   icon: Mail,
                   label: "Email Us",
-                  value: "teamuniverlk@gmail.com",
-                  href: "mailto:teamuniverlk@gmail.com",
+                  value: "teamuniverzlk@gmail.com",
+                  href: "mailto:teamuniverzlk@gmail.com",
                 },
                 {
                   icon: Phone,

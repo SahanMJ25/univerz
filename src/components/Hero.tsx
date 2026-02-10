@@ -111,7 +111,6 @@ export default function Hero() {
             >
               {[
                 { value: "50+", label: "Projects Delivered" },
-                { value: "5+", label: "Years Experience" },
                 { value: "100%", label: "Client Satisfaction" },
               ].map((stat) => (
                 <div key={stat.label}>

@@ -152,11 +152,6 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} Univerz Digital Agency. All rights
             reserved.
           </p>
-          <p className="text-slate-500 text-xs font-mono">
-            Crafted with <span className="text-brand">{"<code />"}</span>{" "}
-            &{" "}
-            <span className="text-brand">{"📸"}</span> in Sri Lanka
-          </p>
         </div>
       </div>
     </footer>

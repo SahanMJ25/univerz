@@ -37,7 +37,19 @@ import SectionHeading from "@/components/SectionHeading";
    },
    ───────────────────────────────────────────────────────────── */
 
-const portfolioItems: any[] = [
+type Category = "all" | "web" | "photo" | "marketing";
+
+interface PortfolioItem {
+  id: number;
+  category: "web" | "photo" | "marketing";
+  title: string;
+  subtitle: string;
+  description: string;
+  tags: string[];
+  stats?: string;
+}
+
+const portfolioItems: PortfolioItem[] = [
   // ──── ADD YOUR PROJECTS BELOW ────
 
   // {
@@ -72,8 +84,6 @@ const portfolioItems: any[] = [
 
   // ──── ADD MORE PROJECTS HERE ────
 ];
-
-type Category = "all" | "web" | "photo" | "marketing";
 
 const categories: { key: Category; label: string; icon: typeof Code2 }[] = [
   { key: "all", label: "All Work", icon: Eye },

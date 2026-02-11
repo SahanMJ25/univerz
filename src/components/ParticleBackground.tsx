@@ -3,44 +3,19 @@
 import { useEffect, useRef } from "react";
 
 // ═══════════════════════════════════════════════════════════════
-//  UNIVERZ — Premium Constellation Network Background
-//  Inspired by antigravity.com's sophisticated mesh aesthetic.
-//  Nodes drift slowly; lines form between nearby nodes.
-//  Mouse acts as a gravity well that attracts + connects.
+//  UNIVERZ — Interactive Grid Net Background
+//  A clean grid of squares. Near the cursor, grid lines glow
+//  with the brand colour and intersections light up — creating
+//  a "net that follows the mouse" effect. Premium & minimal.
 // ═══════════════════════════════════════════════════════════════
 
-// ─── Tuning knobs ──────────────────────────────────────────────
-const NODE_DENSITY       = 0.00008;  // nodes per px² of viewport
-const CONNECT_DIST       = 180;      // max dist (px) to draw an edge
-const MOUSE_CONNECT_DIST = 250;      // cursor connects further than nodes
-const MOUSE_ATTRACT      = 0.012;    // how strongly the cursor pulls nodes
-const MOUSE_RADIUS       = 280;      // radius of cursor influence
-const DRIFT_SPEED        = 0.15;     // ambient float velocity
-const LERP_RETURN        = 0.03;     // smoothness of return after attraction
-const NODE_MIN_R         = 1.0;      // smallest node radius
-const NODE_MAX_R         = 2.2;      // largest  node radius
+const CELL        = 50;          // grid cell size (matches CSS grid-bg)
+const GLOW_RADIUS = 220;         // how far the cursor influence reaches (px)
+const DOT_RADIUS  = 2;           // intersection dot size
 
-// ─── Premium colour palette ───────────────────────────────────
-//  Muted silver / warm gold / brand accent – luxury, not playful
-const NODE_COLOR       = "rgba(180, 180, 195, 0.7)";   // silver-grey nodes
-const LINE_BASE_COLOR  = [160, 160, 175];               // silver edge RGB
-const MOUSE_LINE_COLOR = [225, 112,  68];               // brand #e17044 edges near cursor
-const MOUSE_NODE_GLOW  = "rgba(225, 112, 68, 0.35)";   // soft brand halo on cursor
-
-// ─── Helpers ──────────────────────────────────────────────────
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
-function dist(ax: number, ay: number, bx: number, by: number) {
-  const dx = ax - bx, dy = ay - by;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-// ─── Node type ────────────────────────────────────────────────
-interface Node {
-  x: number;   y: number;    // rendered position
-  ox: number;  oy: number;   // origin (drift) position
-  vx: number;  vy: number;   // drift velocity
-  r: number;                  // radius
-  phase: number;              // for subtle pulse
+// Smoothed mouse position for fluid feel
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
 }
 
 export default function ParticleBackground() {
@@ -53,149 +28,151 @@ export default function ParticleBackground() {
     if (!ctx) return;
 
     let raf: number;
-    let nodes: Node[] = [];
-    let mouse = { x: -9999, y: -9999, active: false };
     let W = 0, H = 0;
+    // Raw mouse (set by events) and smooth mouse (lerped each frame)
+    let rawMouse  = { x: -9999, y: -9999 };
+    let mouse     = { x: -9999, y: -9999 };
+    let mouseActive = false;
 
-    // ── Resize & seed nodes ──────────────────────────────────
     function resize() {
       W = window.innerWidth;
       H = window.innerHeight;
       canvas!.width  = W;
       canvas!.height = H;
-      seed();
     }
 
-    function seed() {
-      const area  = W * H;
-      const count = Math.max(40, Math.floor(area * NODE_DENSITY));
-      nodes = [];
-      for (let i = 0; i < count; i++) {
-        const x = Math.random() * W;
-        const y = Math.random() * H;
-        nodes.push({
-          x, y, ox: x, oy: y,
-          vx: (Math.random() - 0.5) * DRIFT_SPEED * 2,
-          vy: (Math.random() - 0.5) * DRIFT_SPEED * 2,
-          r:  NODE_MIN_R + Math.random() * (NODE_MAX_R - NODE_MIN_R),
-          phase: Math.random() * Math.PI * 2,
-        });
-      }
-    }
-
-    // ── Main render loop ─────────────────────────────────────
-    let t = 0; // frame counter for pulse
     function animate() {
-      t += 0.008;
       ctx.clearRect(0, 0, W, H);
 
-      // ── 1. Update node positions ──────────────────────────
-      for (const n of nodes) {
-        // Drift the origin
-        n.ox += n.vx;
-        n.oy += n.vy;
+      // Smoothly interpolate toward raw mouse for fluid movement
+      mouse.x = lerp(mouse.x, rawMouse.x, 0.12);
+      mouse.y = lerp(mouse.y, rawMouse.y, 0.12);
 
-        // Wrap edges seamlessly
-        if (n.ox < -20) n.ox = W + 20;
-        if (n.ox > W + 20) n.ox = -20;
-        if (n.oy < -20) n.oy = H + 20;
-        if (n.oy > H + 20) n.oy = -20;
-
-        // Target = origin, unless mouse pulls it
-        let tx = n.ox, ty = n.oy;
-
-        if (mouse.active) {
-          const d = dist(n.ox, n.oy, mouse.x, mouse.y);
-          if (d < MOUSE_RADIUS && d > 0) {
-            // Attract toward cursor (stronger when closer)
-            const strength = (1 - d / MOUSE_RADIUS) * MOUSE_ATTRACT;
-            tx = n.ox + (mouse.x - n.ox) * strength * 12;
-            ty = n.oy + (mouse.y - n.oy) * strength * 12;
-          }
-        }
-
-        // Smooth interpolation toward target
-        n.x = lerp(n.x, tx, LERP_RETURN + 0.04);
-        n.y = lerp(n.y, ty, LERP_RETURN + 0.04);
+      if (!mouseActive) {
+        // Fade out by moving smooth mouse off-screen gradually
+        mouse.x = lerp(mouse.x, -9999, 0.05);
+        mouse.y = lerp(mouse.y, -9999, 0.05);
       }
 
-      // ── 2. Draw edges (the "net") ─────────────────────────
-      //  We iterate every unique pair (i, j) with j > i.
-      //  Line opacity = 1 – (distance / max_distance)
-      for (let i = 0; i < nodes.length; i++) {
-        const a = nodes[i];
-        for (let j = i + 1; j < nodes.length; j++) {
-          const b = nodes[j];
-          const d = dist(a.x, a.y, b.x, b.y);
-          if (d < CONNECT_DIST) {
-            const opacity = (1 - d / CONNECT_DIST) * 0.35;
-            const [r, g, bl] = LINE_BASE_COLOR;
+      const cols = Math.ceil(W / CELL) + 1;
+      const rows = Math.ceil(H / CELL) + 1;
+
+      // ── Draw vertical grid lines ──────────────────────────
+      for (let c = 0; c <= cols; c++) {
+        const x = c * CELL;
+
+        // Check distance from this line to cursor (horizontal dist)
+        // Sample a few points along the line to see if any part is near cursor
+        // For efficiency, just check the closest vertical point
+        const closestY = Math.max(0, Math.min(H, mouse.y));
+        const dLine = Math.abs(x - mouse.x);
+
+        if (dLine < GLOW_RADIUS) {
+          // Draw the line with a gradient that glows near the cursor
+          const segments = 40;
+          const segH = H / segments;
+
+          for (let s = 0; s < segments; s++) {
+            const y1 = s * segH;
+            const y2 = (s + 1) * segH;
+            const midY = (y1 + y2) / 2;
+
+            const dx = x - mouse.x;
+            const dy = midY - mouse.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+
+            if (d < GLOW_RADIUS) {
+              const intensity = 1 - d / GLOW_RADIUS;
+              // Brand orange glow — stronger closer to cursor
+              const alpha = intensity * intensity * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(x, y1);
+              ctx.lineTo(x, y2);
+              ctx.strokeStyle = `rgba(225, 112, 68, ${alpha})`;
+              ctx.lineWidth = 0.8 + intensity * 0.8;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // ── Draw horizontal grid lines ─────────────────────────
+      for (let r = 0; r <= rows; r++) {
+        const y = r * CELL;
+        const dLine = Math.abs(y - mouse.y);
+
+        if (dLine < GLOW_RADIUS) {
+          const segments = 40;
+          const segW = W / segments;
+
+          for (let s = 0; s < segments; s++) {
+            const x1 = s * segW;
+            const x2 = (s + 1) * segW;
+            const midX = (x1 + x2) / 2;
+
+            const dx = midX - mouse.x;
+            const dy = y - mouse.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+
+            if (d < GLOW_RADIUS) {
+              const intensity = 1 - d / GLOW_RADIUS;
+              const alpha = intensity * intensity * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(x1, y);
+              ctx.lineTo(x2, y);
+              ctx.strokeStyle = `rgba(225, 112, 68, ${alpha})`;
+              ctx.lineWidth = 0.8 + intensity * 0.8;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // ── Draw glowing dots at grid intersections ────────────
+      for (let c = 0; c <= cols; c++) {
+        for (let r = 0; r <= rows; r++) {
+          const ix = c * CELL;
+          const iy = r * CELL;
+
+          const dx = ix - mouse.x;
+          const dy = iy - mouse.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+
+          if (d < GLOW_RADIUS) {
+            const intensity = 1 - d / GLOW_RADIUS;
+            const alpha = intensity * intensity * 0.7;
+            const radius = DOT_RADIUS + intensity * 1.5;
+
+            // Outer glow
+            if (intensity > 0.3) {
+              const grad = ctx.createRadialGradient(ix, iy, 0, ix, iy, radius * 4);
+              grad.addColorStop(0, `rgba(225, 112, 68, ${alpha * 0.4})`);
+              grad.addColorStop(1, "rgba(225, 112, 68, 0)");
+              ctx.beginPath();
+              ctx.arc(ix, iy, radius * 4, 0, Math.PI * 2);
+              ctx.fillStyle = grad;
+              ctx.fill();
+            }
+
+            // Core dot
             ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = `rgba(${r},${g},${bl},${opacity})`;
-            ctx.lineWidth = 0.6;
-            ctx.stroke();
-          }
-        }
-
-        // ── Cursor → node edges (brand-coloured) ────────────
-        if (mouse.active) {
-          const dm = dist(a.x, a.y, mouse.x, mouse.y);
-          if (dm < MOUSE_CONNECT_DIST) {
-            const opacity = (1 - dm / MOUSE_CONNECT_DIST) * 0.55;
-            const [r, g, bl] = MOUSE_LINE_COLOR;
-            ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(mouse.x, mouse.y);
-            ctx.strokeStyle = `rgba(${r},${g},${bl},${opacity})`;
-            ctx.lineWidth = 0.8;
-            ctx.stroke();
+            ctx.arc(ix, iy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(225, 112, 68, ${alpha})`;
+            ctx.fill();
           }
         }
       }
 
-      // ── 3. Draw nodes ─────────────────────────────────────
-      for (const n of nodes) {
-        // Subtle pulse: radius oscillates ±15%
-        const pulse = 1 + Math.sin(t * 2 + n.phase) * 0.15;
-        const r = n.r * pulse;
-
-        // If near mouse → glow with brand colour
-        let glow = false;
-        if (mouse.active) {
-          const dm = dist(n.x, n.y, mouse.x, mouse.y);
-          if (dm < MOUSE_CONNECT_DIST * 0.6) glow = true;
-        }
-
-        if (glow) {
-          // Radial gradient halo
-          const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 5);
-          grad.addColorStop(0, "rgba(225,112,68,0.25)");
-          grad.addColorStop(1, "rgba(225,112,68,0)");
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, r * 5, 0, Math.PI * 2);
-          ctx.fillStyle = grad;
-          ctx.fill();
-        }
-
-        // Core dot
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = glow ? "rgba(225,112,68,0.9)" : NODE_COLOR;
-        ctx.fill();
-      }
-
-      // ── 4. Cursor glow hub ─────────────────────────────────
-      if (mouse.active) {
+      // ── Soft cursor glow hub ───────────────────────────────
+      if (mouseActive || mouse.x > -5000) {
         const grad = ctx.createRadialGradient(
           mouse.x, mouse.y, 0,
-          mouse.x, mouse.y, 8
+          mouse.x, mouse.y, GLOW_RADIUS * 0.3
         );
-        grad.addColorStop(0, MOUSE_NODE_GLOW);
-        grad.addColorStop(1, "rgba(225,112,68,0)");
+        grad.addColorStop(0, "rgba(225, 112, 68, 0.06)");
+        grad.addColorStop(1, "rgba(225, 112, 68, 0)");
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 8, 0, Math.PI * 2);
+        ctx.arc(mouse.x, mouse.y, GLOW_RADIUS * 0.3, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
       }
@@ -203,21 +180,23 @@ export default function ParticleBackground() {
       raf = requestAnimationFrame(animate);
     }
 
-    // ── Event handlers ───────────────────────────────────────
+    // ── Events ───────────────────────────────────────────────
     function onMouseMove(e: MouseEvent) {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      mouse.active = true;
+      rawMouse.x = e.clientX;
+      rawMouse.y = e.clientY;
+      mouseActive = true;
     }
-    function onMouseLeave() { mouse.active = false; }
+    function onMouseLeave() {
+      mouseActive = false;
+    }
     function onTouchMove(e: TouchEvent) {
       if (e.touches.length) {
-        mouse.x = e.touches[0].clientX;
-        mouse.y = e.touches[0].clientY;
-        mouse.active = true;
+        rawMouse.x = e.touches[0].clientX;
+        rawMouse.y = e.touches[0].clientY;
+        mouseActive = true;
       }
     }
-    function onTouchEnd() { mouse.active = false; }
+    function onTouchEnd() { mouseActive = false; }
 
     // ── Bind ─────────────────────────────────────────────────
     window.addEventListener("resize", resize);
@@ -228,7 +207,7 @@ export default function ParticleBackground() {
     resize();
     animate();
 
-    // ── Teardown ─────────────────────────────────────────────
+    // ── Cleanup ──────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);

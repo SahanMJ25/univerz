@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Code2, Camera, ArrowRight, Terminal, Aperture } from "lucide-react";
 
 const fadeInUp = {
@@ -83,13 +83,47 @@ export default function Hero() {
   useEffect(() => {
     setDisplayedLines([""]);
   }, []);
+
+  // ─── Mouse-follow grid spotlight ───
+  const sectionRef = useRef<HTMLElement>(null);
+  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const rect = sectionRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setMousePos({ x: -1000, y: -1000 });
+  }, []);
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-white grid-bg">
+    <section
+      ref={sectionRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="relative min-h-screen flex items-center overflow-hidden bg-white grid-bg"
+    >
       {/* ─── Background Gradients ─── */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] bg-brand/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-1/4 -right-32 w-[500px] h-[500px] bg-brand-50 rounded-full blur-[120px]" />
       </div>
+
+      {/* ─── Mouse-follow spotlight that illuminates grid squares ─── */}
+      <div
+        className="absolute pointer-events-none transition-opacity duration-300"
+        style={{
+          left: mousePos.x - 250,
+          top: mousePos.y - 250,
+          width: 500,
+          height: 500,
+          background:
+            "radial-gradient(circle, rgba(225,112,68,0.08) 0%, rgba(225,112,68,0.03) 40%, transparent 70%)",
+          opacity: mousePos.x > -500 ? 1 : 0,
+        }}
+      />
 
       <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-32 pb-20 w-full">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">

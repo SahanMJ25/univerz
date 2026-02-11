@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { Code2, Camera, ArrowRight, Terminal, Aperture } from "lucide-react";
 
 const fadeInUp = {
@@ -23,7 +24,65 @@ const codeLines = [
   { text: "};", color: "text-brand" },
 ];
 
+// ─── Typewriter configuration ───
+const TYPING_LINES = [
+  { prefix: "We ", highlight: "Build." },
+  { prefix: "We ", highlight: "Capture." },
+  { prefix: "We ", highlight: "Grow." },
+];
+const CHAR_DELAY     = 65;   // ms between characters
+const LINE_PAUSE     = 400;  // ms pause between lines
+const START_DELAY    = 600;  // ms before typing begins
+
 export default function Hero() {
+  // ─── Typewriter state ───
+  // displayedLines: array of strings currently visible (built char by char)
+  // currentLine: which line (0–2) is being typed
+  // currentChar: which character index within the full line text
+  // typingDone: true when all 3 lines are fully typed
+  const [displayedLines, setDisplayedLines] = useState<string[]>([]);
+  const [currentLine, setCurrentLine] = useState(0);
+  const [currentChar, setCurrentChar] = useState(0);
+  const [typingDone, setTypingDone] = useState(false);
+
+  useEffect(() => {
+    if (typingDone) return;
+
+    const fullText =
+      TYPING_LINES[currentLine].prefix + TYPING_LINES[currentLine].highlight;
+
+    // Determine delay: initial start delay, inter-line pause, or character delay
+    let delay = CHAR_DELAY;
+    if (currentLine === 0 && currentChar === 0) delay = START_DELAY;
+    else if (currentChar === 0) delay = LINE_PAUSE;
+
+    const timer = setTimeout(() => {
+      if (currentChar < fullText.length) {
+        // Type next character
+        setDisplayedLines((prev) => {
+          const updated = [...prev];
+          updated[currentLine] = fullText.slice(0, currentChar + 1);
+          return updated;
+        });
+        setCurrentChar((c) => c + 1);
+      } else if (currentLine < TYPING_LINES.length - 1) {
+        // Move to next line
+        setCurrentLine((l) => l + 1);
+        setCurrentChar(0);
+        setDisplayedLines((prev) => [...prev, ""]);
+      } else {
+        // All done
+        setTypingDone(true);
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [currentLine, currentChar, typingDone]);
+
+  // Start with one empty line so the first line container exists
+  useEffect(() => {
+    setDisplayedLines([""]);
+  }, []);
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden bg-white grid-bg">
       {/* ─── Background Gradients ─── */}
@@ -51,20 +110,34 @@ export default function Hero() {
               </span>
             </motion.div>
 
-            {/* Heading */}
+            {/* Heading — Typewriter Animation */}
             <motion.h1
               variants={fadeInUp}
               custom={1}
-              className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] mb-6"
+              className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] mb-6 min-h-[3.6em]"
             >
-              <span className="text-navy">We </span>
-              <span className="text-brand">Build.</span>
-              <br />
-              <span className="text-navy">We </span>
-              <span className="text-brand">Capture.</span>
-              <br />
-              <span className="text-navy">We </span>
-              <span className="text-brand">Grow.</span>
+              {displayedLines.map((lineText, idx) => {
+                const cfg = TYPING_LINES[idx];
+                if (!cfg) return null;
+                const prefixLen = cfg.prefix.length;
+                // Split the currently-typed text into prefix (navy) and highlight (brand)
+                const visiblePrefix = lineText.slice(0, Math.min(lineText.length, prefixLen));
+                const visibleHighlight = lineText.length > prefixLen
+                  ? lineText.slice(prefixLen)
+                  : "";
+                const isActiveLine = idx === currentLine && !typingDone;
+
+                return (
+                  <span key={idx} className="block">
+                    <span className="text-navy">{visiblePrefix}</span>
+                    <span className="text-brand">{visibleHighlight}</span>
+                    {/* Blinking cursor on active line */}
+                    {isActiveLine && (
+                      <span className="inline-block w-[3px] h-[0.85em] bg-brand ml-0.5 align-middle animate-pulse rounded-sm" />
+                    )}
+                  </span>
+                );
+              })}
             </motion.h1>
 
             {/* Tagline */}

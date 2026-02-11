@@ -15,6 +15,7 @@ import {
 import Hero from "@/components/Hero";
 import ServiceCard from "@/components/ServiceCard";
 import SectionHeading from "@/components/SectionHeading";
+import ParticleBackground from "@/components/ParticleBackground";
 
 const services = [
   {
@@ -70,6 +71,9 @@ const whyUs = [
 export default function HomePage() {
   return (
     <>
+      {/* ─── Interactive Particle Background ─── */}
+      <ParticleBackground />
+
       {/* ─── Hero Section ─── */}
       <Hero />
 
